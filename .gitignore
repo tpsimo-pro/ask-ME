@@ -1,2 +1,9 @@
 ideia-geral.txt
 .worktrees/
+backend/.venv/
+__pycache__/
+*.pyc
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+.env
