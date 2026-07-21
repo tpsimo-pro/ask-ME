@@ -2,12 +2,9 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import { AuthGuard } from "./components/AuthGuard";
 import { AuthProvider } from "./context/AuthContext";
+import { AnalyzePage } from "./pages/AnalyzePage";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { LoginPage } from "./pages/LoginPage";
-
-function HomePlaceholder() {
-  return <p>Analyze page (Task 18)</p>;
-}
 
 export function App() {
   return (
@@ -20,7 +17,7 @@ export function App() {
             path="/"
             element={
               <AuthGuard>
-                <HomePlaceholder />
+                <AnalyzePage />
               </AuthGuard>
             }
           />
