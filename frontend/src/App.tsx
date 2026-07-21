@@ -4,6 +4,7 @@ import { AuthGuard } from "./components/AuthGuard";
 import { AuthProvider } from "./context/AuthContext";
 import { AnalyzePage } from "./pages/AnalyzePage";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
+import { HistoryPage } from "./pages/HistoryPage";
 import { LoginPage } from "./pages/LoginPage";
 
 export function App() {
@@ -18,6 +19,14 @@ export function App() {
             element={
               <AuthGuard>
                 <AnalyzePage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/historico"
+            element={
+              <AuthGuard>
+                <HistoryPage />
               </AuthGuard>
             }
           />
