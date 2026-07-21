@@ -2,10 +2,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import { AuthGuard } from "./components/AuthGuard";
 import { AuthProvider } from "./context/AuthContext";
-
-function LoginPlaceholder() {
-  return <p>Login page (Task 16)</p>;
-}
+import { AuthCallbackPage } from "./pages/AuthCallbackPage";
+import { LoginPage } from "./pages/LoginPage";
 
 function HomePlaceholder() {
   return <p>Analyze page (Task 18)</p>;
@@ -16,7 +14,8 @@ export function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPlaceholder />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route
             path="/"
             element={
