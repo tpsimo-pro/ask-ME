@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
@@ -6,8 +6,12 @@ import { useAuth } from "../context/AuthContext";
 export function AuthCallbackPage() {
   const { setToken } = useAuth();
   const navigate = useNavigate();
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
+    if (hasProcessed.current) return;
+    hasProcessed.current = true;
+
     const match = window.location.hash.match(/token=([^&]+)/);
     if (match) {
       setToken(decodeURIComponent(match[1]));
