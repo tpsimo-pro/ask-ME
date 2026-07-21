@@ -9,6 +9,9 @@ export function AuthCallbackPage() {
   const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // Guards against StrictMode's dev-only double-invoke on mount; safe because
+    // this route is only ever reached via a fresh page load (the OAuth
+    // redirect), never a client-side route change onto an already-mounted instance.
     if (hasProcessed.current) return;
     hasProcessed.current = true;
 
