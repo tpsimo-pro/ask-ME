@@ -9,6 +9,16 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorized: (() => void) | null = null;
+
+// Registered by AuthProvider so a 401 from any apiFetch call clears the
+// session; AuthGuard then redirects to /login reactively once the token
+// becomes null. Kept as a plain function here (not a hook) since apiFetch
+// is called from outside React component bodies.
+export function registerUnauthorizedHandler(handler: () => void): void {
+  onUnauthorized = handler;
+}
+
 export async function apiFetch<T>(
   path: string,
   token: string | null,
@@ -24,6 +34,9 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }));
+    if (response.status === 401) {
+      onUnauthorized?.();
+    }
     throw new ApiError(response.status, body.detail ?? "Request failed");
   }
 

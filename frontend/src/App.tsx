@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import { AuthGuard } from "./components/AuthGuard";
+import { NavBar } from "./components/NavBar";
 import { AuthProvider } from "./context/AuthContext";
 import { AnalyzePage } from "./pages/AnalyzePage";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
@@ -18,6 +19,7 @@ export function App() {
             path="/"
             element={
               <AuthGuard>
+                <NavBar />
                 <AnalyzePage />
               </AuthGuard>
             }
@@ -26,6 +28,7 @@ export function App() {
             path="/historico"
             element={
               <AuthGuard>
+                <NavBar />
                 <HistoryPage />
               </AuthGuard>
             }

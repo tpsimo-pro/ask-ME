@@ -1,4 +1,6 @@
-import { createContext, ReactNode, useContext, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+
+import { registerUnauthorizedHandler } from "../api/client";
 
 interface AuthContextValue {
   token: string | null;
@@ -9,6 +11,10 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    registerUnauthorizedHandler(() => setToken(null));
+  }, []);
 
   return <AuthContext.Provider value={{ token, setToken }}>{children}</AuthContext.Provider>;
 }

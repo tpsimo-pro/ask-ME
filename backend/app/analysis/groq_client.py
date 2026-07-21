@@ -32,7 +32,10 @@ def call_groq(prompt: str, client: Groq | None = None) -> dict:
     except Exception as exc:
         raise GroqAnalysisError(f"Groq API request failed: {exc}") from exc
 
-    content = completion.choices[0].message.content
+    try:
+        content = completion.choices[0].message.content
+    except (IndexError, AttributeError) as exc:
+        raise GroqAnalysisError(f"Groq returned an unexpected response shape: {exc}") from exc
 
     try:
         return json.loads(content)
