@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends
+import hmac
+import secrets
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -10,14 +13,29 @@ from app.db.session import get_db
 
 router = APIRouter(prefix="/auth/google", tags=["auth"])
 
+OAUTH_STATE_COOKIE = "oauth_state"
+
 
 @router.get("/login")
 def login():
-    return RedirectResponse(build_google_login_url())
+    state = secrets.token_urlsafe(32)
+    response = RedirectResponse(build_google_login_url(state=state))
+    response.set_cookie(
+        OAUTH_STATE_COOKIE,
+        state,
+        max_age=600,
+        httponly=True,
+        samesite="lax",
+    )
+    return response
 
 
 @router.get("/callback")
-def callback(code: str, db: Session = Depends(get_db)):
+def callback(code: str, state: str, request: Request, db: Session = Depends(get_db)):
+    cookie_state = request.cookies.get(OAUTH_STATE_COOKIE)
+    if not cookie_state or not hmac.compare_digest(cookie_state, state):
+        raise HTTPException(status_code=400, detail="Invalid or missing OAuth state")
+
     userinfo = exchange_code_for_userinfo(code)
 
     user = db.query(User).filter(User.google_sub == userinfo["google_sub"]).first()
@@ -38,4 +56,6 @@ def callback(code: str, db: Session = Depends(get_db)):
         db.commit()
 
     token = create_access_token(user.id)
-    return RedirectResponse(f"{settings.frontend_url}/auth/callback#token={token}")
+    response = RedirectResponse(f"{settings.frontend_url}/auth/callback#token={token}")
+    response.delete_cookie(OAUTH_STATE_COOKIE)
+    return response

@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 import httpx
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
@@ -8,7 +10,7 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 
-def build_google_login_url() -> str:
+def build_google_login_url(state: str) -> str:
     params = {
         "client_id": settings.google_client_id,
         "redirect_uri": settings.google_redirect_uri,
@@ -16,8 +18,9 @@ def build_google_login_url() -> str:
         "scope": "openid email profile",
         "access_type": "offline",
         "prompt": "consent",
+        "state": state,
     }
-    query = "&".join(f"{key}={value}" for key, value in params.items())
+    query = urlencode(params)
     return f"{GOOGLE_AUTH_URL}?{query}"
 
 
