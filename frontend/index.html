@@ -3,7 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Code Analyzer</title>
+    <meta
+      name="description"
+      content="ask-ME — analisador de código com IA: sugestões de melhoria, testes gerados e riscos de segurança."
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Crect width='26' height='26' rx='6' fill='%2314181d'/%3E%3Cpath d='M7.5 9.5L11 13L7.5 16.5' stroke='%233DE0D6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Cline x1='13' y1='16.5' x2='18.5' y2='16.5' stroke='%233DE0D6' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <title>ask-ME — Análise de código com IA</title>
+    <script>
+      // Applied synchronously, before first paint, to avoid a flash of the
+      // wrong theme. Mirrors the logic in src/context/ThemeContext.tsx.
+      (function () {
+        try {
+          var stored = window.localStorage.getItem("ask-me:theme");
+          var isDark =
+            stored === "dark" ||
+            (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (isDark) document.documentElement.classList.add("dark");
+        } catch (err) {
+          /* localStorage unavailable (e.g. privacy mode) — fall back to light. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

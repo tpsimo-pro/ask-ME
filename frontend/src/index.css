@@ -1,5 +1,131 @@
 @import "tailwindcss";
 
+/* Enables `dark:` utilities for the handful of cases that need them beyond
+   token remapping (see .dark block below). Toggled by adding/removing the
+   "dark" class on <html> — see src/context/ThemeContext.tsx. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Roboto", "Segoe UI", sans-serif;
+  --font-sans: "Roboto", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+
+  /* Surfaces */
+  --color-paper: #f4f6f4;
+  --color-paper-raised: #ffffff;
+
+  /* Ink — darkened from the original pass (ink-muted 5.57:1, line 1.22:1)
+     after user feedback that light-mode text/borders read as too weak.
+     New values verified against WCAG relative-luminance contrast math;
+     see docs/agent-reports for the before/after ratio table. */
+  --color-ink: #14181d;
+  --color-ink-muted: #40493f;
+  --color-line: #a3aea7;
+
+  /* Signal — one accent per report category, grounded in the product's
+     own vocabulary (Sugestões / Testes / Riscos). Intensified alongside
+     the ink tokens above; amber in particular was failing AA (3.34:1)
+     against --color-paper. */
+  --color-signal: #0a6a68;
+  --color-signal-dark: #084f4e;
+  --color-amber: #946012;
+  --color-amber-dark: #71480d;
+  --color-crimson: #9c3434;
+  --color-crimson-dark: #7a2828;
+
+  /* Text color for content painted on top of a --color-signal fill (e.g. the
+     primary button). Kept separate from --color-signal itself because dark
+     mode needs signal to be light enough to read as text on a dark page,
+     which would break white-on-signal button contrast if reused. */
+  --color-on-signal: #ffffff;
+}
+
+/* Dark theme — same token names, new values. Custom properties inherit, so
+   every utility already built from these tokens (bg-paper, text-ink,
+   border-line, text-signal, border-l-crimson, bg-signal/10, ...) repaints
+   automatically for anything under .dark. No per-component "dark:bg-*"
+   duplication needed; the design system's own indirection carries the
+   theme. .dark is applied to <html> by ThemeContext. */
+.dark {
+  --color-paper: #12161a;
+  --color-paper-raised: #1c2227;
+
+  --color-ink: #eceeec;
+  --color-ink-muted: #98a69e;
+  --color-line: #333c43;
+
+  --color-signal: #3fc2b7;
+  --color-signal-dark: #2fa89d;
+  --color-amber: #e7a548;
+  --color-amber-dark: #c88a2e;
+  --color-crimson: #e17368;
+  --color-crimson-dark: #c85b50;
+
+  --color-on-signal: #0b1310;
+}
+
 body {
-  @apply bg-white text-slate-800;
+  @apply bg-paper text-ink antialiased;
+  font-family: var(--font-sans);
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--color-signal) 25%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
+
+/* Theme toggle should feel like a soft cross-fade, not a hard cut — but
+   this must never fight component-level transitions (e.g. the chevron's
+   transition-transform in HistoryList). @layer base sits below Tailwind's
+   utilities layer, so any element with its own transition-* utility keeps
+   full control; this only fills in color transitions for elements that
+   don't declare one. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    transition-property: background-color, border-color, color, fill, stroke, text-decoration-color;
+    transition-duration: 180ms;
+    transition-timing-function: ease;
+  }
+}
+
+/* Signature "scan sweep" motion for loading states — a diagnostic scanner
+   metaphor rather than a stock spinner. */
+@keyframes scan-sweep {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(310%);
+  }
+}
+
+.scan-sweep {
+  animation: scan-sweep 1.15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-sweep {
+    animation: none;
+    left: 33%;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
