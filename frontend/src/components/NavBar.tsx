@@ -1,3 +1,4 @@
+import { Moon, Sun } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
@@ -8,47 +9,6 @@ const LINKS = [
   { to: "/", label: "Analisar" },
   { to: "/historico", label: "Histórico" },
 ];
-
-function SunIcon() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      width="16"
-      height="16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle cx="10" cy="10" r="3.5" fill="#F2B233" />
-      <g stroke="#F2B233" strokeWidth="1.6" strokeLinecap="round">
-        <line x1="10" y1="1.5" x2="10" y2="3.5" />
-        <line x1="10" y1="16.5" x2="10" y2="18.5" />
-        <line x1="1.5" y1="10" x2="3.5" y2="10" />
-        <line x1="16.5" y1="10" x2="18.5" y2="10" />
-        <line x1="4.2" y1="4.2" x2="5.6" y2="5.6" />
-        <line x1="14.4" y1="14.4" x2="15.8" y2="15.8" />
-        <line x1="4.2" y1="15.8" x2="5.6" y2="14.4" />
-        <line x1="14.4" y1="5.6" x2="15.8" y2="4.2" />
-      </g>
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      width="16"
-      height="16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M17 11.2A7.2 7.2 0 1 1 8.8 3a5.7 5.7 0 0 0 8.2 8.2Z"
-        fill="#FFFFFF"
-      />
-    </svg>
-  );
-}
 
 export function NavBar() {
   const { setToken } = useAuth();
@@ -99,7 +59,11 @@ export function NavBar() {
             }
             className="flex cursor-pointer h-7 w-7 items-center justify-center rounded-[3px] text-ink-muted transition-colors hover:border-signal/60 hover:text-ink"
           >
-            {isDark ? <MoonIcon /> : <SunIcon />}
+            {isDark ? (
+              <Sun size={16} color="#F2B233" aria-hidden="true" />
+            ) : (
+              <Moon size={16} color="#000000" aria-hidden="true" />
+            )}
           </button>
           <button
             type="button"
