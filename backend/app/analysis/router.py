@@ -64,3 +64,17 @@ def get_history_item(
         testes_gerados=analysis.generated_tests,
         riscos_seguranca=analysis.security_risks,
     )
+
+
+@router.delete("/history/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_history_item(
+    analysis_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    analysis = db.get(Analysis, analysis_id)
+    if analysis is None or analysis.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
+
+    db.delete(analysis)
+    db.commit()

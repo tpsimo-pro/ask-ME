@@ -40,5 +40,12 @@ export async function apiFetch<T>(
     throw new ApiError(response.status, body.detail ?? "Request failed");
   }
 
-  return response.json() as Promise<T>;
+  // 204 No Content (and any other empty-bodied response) has nothing to
+  // parse as JSON — callers expecting no payload should use apiFetch<void>.
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ApiError, apiFetch } from "../api/client";
 import { AnalysisResult } from "../components/AnalysisResult";
 import { CodeInput } from "../components/CodeInput";
+import { Spinner } from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 
 interface AnalyzeResponse {
@@ -35,28 +36,66 @@ export function AnalyzePage() {
     }
   }
 
+  const showIdlePanel = !isLoading && !result && !error;
+
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
-      <h1 className="text-lg font-semibold text-slate-900">Analisar código</h1>
+    <div className="mx-auto flex max-w-3xl flex-col gap-5 px-6 py-10">
+      <header>
+        <p className="font-mono text-sm uppercase tracking-[0.2em] text-signal">
+          Novo diagnóstico
+        </p>
+        <h1 className="mt-1 font-display text-2xl font-semibold text-ink">
+          Analisar código
+        </h1>
+      </header>
+
       <CodeInput
         code={code}
         language={language}
         onCodeChange={setCode}
         onLanguageChange={setLanguage}
       />
+
       <button
         type="button"
         onClick={handleAnalyze}
         disabled={isLoading || code.trim().length === 0}
-        className="self-start rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+        className="inline-flex cursor-pointer items-center gap-2.5 self-start rounded-[3px] bg-signal px-5 py-2.5 font-mono text-sm font-medium uppercase tracking-wide text-on-signal transition-colors hover:bg-signal-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-muted"
       >
-        {isLoading ? "Analisando..." : "Analisar"}
+        {isLoading && <Spinner />}
+        {isLoading ? "Analisando" : "Analisar"}
       </button>
+
       {error && (
-        <p role="alert" className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-sm border border-line border-l-4 border-l-crimson bg-paper-raised px-4 py-3 text-base text-ink"
+        >
+          <span className="mr-2 font-mono text-xs uppercase tracking-wide text-crimson">
+            Erro
+          </span>
           {error}
         </p>
       )}
+
+      {isLoading && (
+        <div className="flex items-center gap-3 rounded-sm border border-dashed border-line px-5 py-8 text-center">
+          <Spinner label="Executando análise com IA..." className="mx-auto" />
+        </div>
+      )}
+
+      {showIdlePanel && (
+        <div className="rounded-sm border border-dashed border-line px-6 py-10 text-center">
+          <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
+            Aguardando entrada
+          </p>
+          <p className="mt-2 text-base text-ink-muted">
+            Cole um trecho de código ou carregue um arquivo, depois clique em
+            Analisar.
+          </p>
+        </div>
+      )}
+
       <AnalysisResult result={result} />
     </div>
   );

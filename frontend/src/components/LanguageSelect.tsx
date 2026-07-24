@@ -21,7 +21,7 @@ export function LanguageSelect({ value, onChange }: LanguageSelectProps) {
       value={value}
       onChange={(event) => onChange(event.target.value)}
       aria-label="Linguagem"
-      className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+      className="rounded-[3px] cursor-pointer border border-line bg-paper-raised px-2.5 py-1.5 font-mono text-sm text-ink focus-visible:border-signal focus-visible:outline-none"
     >
       {LANGUAGES.map((language) => (
         <option key={language} value={language}>
