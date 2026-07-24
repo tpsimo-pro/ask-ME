@@ -96,7 +96,7 @@ export function AnalyzePage() {
         </div>
       )}
 
-      <AnalysisResult result={result} />
+      <AnalysisResult result={result} language={language} />
     </div>
   );
 }
