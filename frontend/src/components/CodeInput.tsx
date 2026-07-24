@@ -12,7 +12,12 @@ interface CodeInputProps {
 const MIN_LINES = 20;
 const PANE_MAX_HEIGHT = "22rem";
 
-export function CodeInput({ code, language, onCodeChange, onLanguageChange }: CodeInputProps) {
+export function CodeInput({
+  code,
+  language,
+  onCodeChange,
+  onLanguageChange,
+}: CodeInputProps) {
   const gutterRef = useRef<HTMLDivElement>(null);
   const lineCount = Math.max(code.split("\n").length, MIN_LINES);
 
@@ -40,7 +45,7 @@ export function CodeInput({ code, language, onCodeChange, onLanguageChange }: Co
           </span>
           <LanguageSelect value={language} onChange={onLanguageChange} />
         </div>
-        <label className="relative cursor-pointer rounded-[3px] px-1 font-mono text-sm uppercase tracking-wide text-signal transition-colors hover:text-signal-dark focus-within:outline focus-within:outline-2 focus-within:outline-signal">
+        <label className="relative cursor-pointer rounded-[3px] px-1 font-mono text-sm uppercase tracking-wide text-signal transition-colors hover:text-signal-dark  focus-within:outline-2 focus-within:outline-signal">
           Carregar arquivo
           <input
             type="file"
