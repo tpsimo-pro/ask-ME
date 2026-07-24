@@ -113,7 +113,7 @@ export function HistoryList({
                   </p>
                 )}
                 {!isLoading && !hasError && detail && (
-                  <AnalysisResult result={detail} />
+                  <AnalysisResult result={detail} language={item.language} />
                 )}
 
                 {!isLoading && (
