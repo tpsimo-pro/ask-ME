@@ -7,7 +7,11 @@ class Settings(BaseSettings):
     groq_api_key: str
     groq_model: str = "llama-3.3-70b-versatile"
     jwt_secret: str
-    jwt_expire_minutes: int = 60
+    jwt_expire_minutes: int = 15
+    refresh_token_expire_days: int = 30
+    reset_token_expire_minutes: int = 60
+    cookie_secure: bool = False
+    email_from: str = "no-reply@ask-me.local"
     google_client_id: str
     google_client_secret: str
     google_redirect_uri: str
