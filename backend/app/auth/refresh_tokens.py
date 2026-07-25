@@ -45,8 +45,28 @@ def rotate(db: Session, raw_token: str) -> tuple[str, str] | None:
     if row.expires_at <= datetime.utcnow():
         return None
 
-    row.revoked_at = datetime.utcnow()
+    # Atomic conditional update: only succeeds if revoked_at is still NULL at
+    # the moment this UPDATE executes. A plain read-then-write here would let
+    # two concurrent rotate() calls for the same raw token (an attacker racing
+    # the legitimate client, or a duplicate retry) both observe revoked_at is
+    # None above, both mark it revoked, and both mint a live child token --
+    # neither would ever see "already revoked", silently defeating replay
+    # detection. This UPDATE...WHERE is the single atomic check-and-set that
+    # closes that race, on both SQLite and Postgres.
+    updated = (
+        db.query(RefreshToken)
+        .filter(RefreshToken.id == row.id, RefreshToken.revoked_at.is_(None))
+        .update({RefreshToken.revoked_at: datetime.utcnow()}, synchronize_session=False)
+    )
     db.commit()
+
+    if updated == 0:
+        # Lost the race: another call already revoked this row between our
+        # read above and this UPDATE. Treat it exactly like presenting an
+        # already-revoked token.
+        revoke_all(db, row.user_id)
+        return None
+
     return row.user_id, issue(db, row.user_id)
 
 
