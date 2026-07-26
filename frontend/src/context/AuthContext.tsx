@@ -51,6 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     try {
       await logoutRequest();
+    } catch {
+      // The server-side revoke failing doesn't change the outcome for this
+      // client -- we still clear local state below and the user is logged
+      // out either way. Swallow here so callers never need to attach their
+      // own rejection handler.
     } finally {
       setToken(null);
     }
