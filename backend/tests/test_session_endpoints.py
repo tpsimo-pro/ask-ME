@@ -54,7 +54,10 @@ def test_replaying_an_old_cookie_kills_the_session(logged_in):
 
 
 def test_logout_revokes_the_session(logged_in):
-    assert logged_in.post("/auth/logout").status_code == 204
+    response = logged_in.post("/auth/logout")
+
+    assert response.status_code == 204
+    assert logged_in.cookies.get("refresh_token") is None
     assert logged_in.post("/auth/refresh").status_code == 401
 
 
