@@ -4,7 +4,7 @@ import pytest
 
 from app.auth import refresh_tokens
 from app.auth.passwords import hash_password, verify_password
-from app.db.models import PasswordResetToken, User
+from app.db.models import User
 
 
 @pytest.fixture()
@@ -92,6 +92,23 @@ def test_reset_revokes_existing_sessions(client, db_session, password_user, reco
     client.post("/auth/reset-password", json={"token": token, "password": "senha-nova-456"})
 
     assert refresh_tokens.rotate(db_session, existing_session) is None
+
+
+def test_forgot_password_returns_202_even_if_email_sending_fails(client, password_user):
+    from app.auth.email_sender import get_email_sender
+    from app.main import app
+
+    class FailingEmailSender:
+        def send(self, to: str, subject: str, body: str) -> None:
+            raise RuntimeError("simulated transport failure")
+
+    app.dependency_overrides[get_email_sender] = lambda: FailingEmailSender()
+    try:
+        response = client.post("/auth/forgot-password", json={"email": "reset@example.com"})
+    finally:
+        del app.dependency_overrides[get_email_sender]
+
+    assert response.status_code == 202
 
 
 def test_forgot_password_is_rate_limited(client, password_user):

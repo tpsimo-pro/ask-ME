@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -6,6 +8,8 @@ from app.auth.email_sender import EmailSender
 from app.auth.passwords import hash_password, verify_password
 from app.core.config import settings
 from app.db.models import User
+
+logger = logging.getLogger(__name__)
 
 
 class EmailAlreadyRegistered(Exception):
@@ -68,17 +72,24 @@ def request_password_reset(db: Session, email: str, sender: EmailSender) -> None
 
     raw_token = reset_tokens.issue(db, user.id)
     reset_url = f"{settings.frontend_url}/reset-password?token={raw_token}"
-    sender.send(
-        to=user.email,
-        subject=RESET_SUBJECT,
-        body=(
-            f"Olá, {user.name}.\n\n"
-            "Recebemos um pedido para redefinir a senha da sua conta.\n"
-            f"Acesse o link abaixo para escolher uma nova senha:\n\n{reset_url}\n\n"
-            f"O link expira em {settings.reset_token_expire_minutes} minutos.\n"
-            "Se você não fez esse pedido, ignore este e-mail."
-        ),
-    )
+    try:
+        sender.send(
+            to=user.email,
+            subject=RESET_SUBJECT,
+            body=(
+                f"Olá, {user.name}.\n\n"
+                "Recebemos um pedido para redefinir a senha da sua conta.\n"
+                f"Acesse o link abaixo para escolher uma nova senha:\n\n{reset_url}\n\n"
+                f"O link expira em {settings.reset_token_expire_minutes} minutos.\n"
+                "Se você não fez esse pedido, ignore este e-mail."
+            ),
+        )
+    except Exception:
+        # A failing email transport must not produce a different HTTP response
+        # than the unknown-email case (that would be a louder enumeration
+        # signal than any timing difference) -- log and continue as if it
+        # succeeded from the caller's perspective.
+        logger.exception("Failed to send password reset email to user %s", user.id)
 
 
 def perform_password_reset(db: Session, raw_token: str, password: str) -> bool:
