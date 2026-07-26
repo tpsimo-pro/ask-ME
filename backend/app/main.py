@@ -9,6 +9,7 @@ from starlette.requests import Request
 from app.analysis.router import router as analysis_router
 from app.auth.router import router as auth_router
 from app.auth.router_credentials import router as credentials_router
+from app.auth.router_session import router as session_router
 from app.core.config import settings
 
 app = FastAPI(title="AI Code Analyzer")
@@ -43,4 +44,5 @@ async def redact_sensitive_validation_errors(request: Request, exc: RequestValid
 
 app.include_router(auth_router)
 app.include_router(credentials_router)
+app.include_router(session_router)
 app.include_router(analysis_router)
