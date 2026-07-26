@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
 import { ApiError } from "../api/client";
 import { AuthLayout } from "../components/AuthLayout";
+import { FormError } from "../components/FormError";
+import { SubmitButton } from "../components/SubmitButton";
 import { TextField } from "../components/TextField";
 import { useAuth } from "../context/AuthContext";
 
@@ -59,19 +61,11 @@ export function LoginPage() {
           autoComplete="current-password"
         />
 
-        {error && (
-          <p role="alert" className="font-mono text-xs text-red-500">
-            {error}
-          </p>
-        )}
+        {error && <FormError message={error} />}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="cursor-pointer rounded-[3px] border border-ink bg-ink px-6 py-3 font-sans text-base font-medium text-paper transition-colors hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {submitting ? "Entrando..." : "Entrar"}
-        </button>
+        <SubmitButton submitting={submitting} submittingLabel="Entrando...">
+          Entrar
+        </SubmitButton>
 
         <Link
           to="/forgot-password"
