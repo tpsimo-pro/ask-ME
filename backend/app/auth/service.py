@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.passwords import hash_password
@@ -23,6 +24,14 @@ def register_user(db: Session, name: str, email: str, password: str) -> User:
         password_hash=hash_password(password),
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Another request won the race between our .first() check above and
+        # this commit, and inserted the same email first. The unique
+        # constraint on users.email caught it -- treat it exactly like the
+        # check above: roll back and surface the same 409 path, not a 500.
+        db.rollback()
+        raise EmailAlreadyRegistered()
     db.refresh(user)
     return user
