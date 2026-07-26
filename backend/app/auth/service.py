@@ -1,7 +1,10 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.auth import refresh_tokens, reset_tokens
+from app.auth.email_sender import EmailSender
 from app.auth.passwords import hash_password, verify_password
+from app.core.config import settings
 from app.db.models import User
 
 
@@ -51,3 +54,45 @@ def authenticate(db: Session, email: str, password: str) -> User | None:
         return None
 
     return user
+
+
+RESET_SUBJECT = "Redefinição de senha — ask-ME"
+
+
+def request_password_reset(db: Session, email: str, sender: EmailSender) -> None:
+    user = db.query(User).filter(User.email == email.strip().lower()).first()
+    if user is None:
+        # Silence is deliberate: the endpoint returns 202 either way so an
+        # attacker cannot use it to discover which addresses are registered.
+        return
+
+    raw_token = reset_tokens.issue(db, user.id)
+    reset_url = f"{settings.frontend_url}/reset-password?token={raw_token}"
+    sender.send(
+        to=user.email,
+        subject=RESET_SUBJECT,
+        body=(
+            f"Olá, {user.name}.\n\n"
+            "Recebemos um pedido para redefinir a senha da sua conta.\n"
+            f"Acesse o link abaixo para escolher uma nova senha:\n\n{reset_url}\n\n"
+            f"O link expira em {settings.reset_token_expire_minutes} minutos.\n"
+            "Se você não fez esse pedido, ignore este e-mail."
+        ),
+    )
+
+
+def perform_password_reset(db: Session, raw_token: str, password: str) -> bool:
+    user_id = reset_tokens.consume(db, raw_token)
+    if user_id is None:
+        return False
+
+    user = db.get(User, user_id)
+    if user is None:
+        return False
+
+    user.password_hash = hash_password(password)
+    db.commit()
+
+    # Whoever triggered the reset may have had a live session; drop them all.
+    refresh_tokens.revoke_all(db, user.id)
+    return True

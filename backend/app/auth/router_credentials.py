@@ -2,9 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.auth import refresh_tokens, service
+from app.auth.email_sender import EmailSender, get_email_sender
 from app.auth.jwt import create_access_token
-from app.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
-from app.core.rate_limit import enforce_login_rate_limit, enforce_register_rate_limit
+from app.auth.schemas import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    TokenResponse,
+)
+from app.core.rate_limit import (
+    enforce_forgot_password_rate_limit,
+    enforce_login_rate_limit,
+    enforce_register_rate_limit,
+)
 from app.db.session import get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -47,3 +58,31 @@ def login(
 
     refresh_tokens.set_cookie(response, refresh_tokens.issue(db, user.id))
     return TokenResponse(access_token=create_access_token(user.id))
+
+
+INVALID_RESET_TOKEN = "Link de redefinição inválido ou expirado. Solicite um novo."
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+    sender: EmailSender = Depends(get_email_sender),
+    _: None = Depends(enforce_forgot_password_rate_limit),
+) -> Response:
+    service.request_password_reset(db, str(payload.email), sender)
+    # Always 202, whether or not the account exists.
+    return Response(status_code=status.HTTP_202_ACCEPTED)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+) -> Response:
+    if not service.perform_password_reset(db, payload.token, payload.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=INVALID_RESET_TOKEN
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
