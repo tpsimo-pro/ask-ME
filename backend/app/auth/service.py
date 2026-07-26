@@ -107,3 +107,33 @@ def perform_password_reset(db: Session, raw_token: str, password: str) -> bool:
     # Whoever triggered the reset may have had a live session; drop them all.
     refresh_tokens.revoke_all(db, user.id)
     return True
+
+
+def link_or_create_google_user(db: Session, userinfo: dict) -> User:
+    email = userinfo["email"].strip().lower()
+
+    user = db.query(User).filter(User.google_sub == userinfo["google_sub"]).first()
+
+    if user is None:
+        # Google verified this address, so attaching it to an account that
+        # already owns the email is safe and keeps one account per person.
+        user = db.query(User).filter(User.email == email).first()
+        if user is not None:
+            user.google_sub = userinfo["google_sub"]
+
+    if user is None:
+        user = User(
+            google_sub=userinfo["google_sub"],
+            email=email,
+            name=userinfo["name"],
+            avatar_url=userinfo["avatar_url"],
+        )
+        db.add(user)
+    else:
+        user.email = email
+        user.name = userinfo["name"]
+        user.avatar_url = userinfo["avatar_url"]
+
+    db.commit()
+    db.refresh(user)
+    return user
