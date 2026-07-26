@@ -19,10 +19,41 @@ export function registerUnauthorizedHandler(handler: () => void): void {
   onUnauthorized = handler;
 }
 
+let onTokenRefreshed: ((token: string) => void) | null = null;
+
+// Registered by AuthProvider so a token obtained by a background refresh
+// reaches React state.
+export function registerTokenRefreshHandler(handler: (token: string) => void): void {
+  onTokenRefreshed = handler;
+}
+
+let refreshPromise: Promise<string | null> | null = null;
+
+// Every caller shares one in-flight request. Without this, parallel 401s each
+// rotate the refresh token and invalidate one another, which the backend reads
+// as token theft and responds to by killing every session.
+export function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise === null) {
+    refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => (body?.access_token as string | undefined) ?? null)
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
 export async function apiFetch<T>(
   path: string,
   token: string | null,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  allowRetry = true
 ): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
@@ -33,10 +64,16 @@ export async function apiFetch<T>(
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({ detail: response.statusText }));
-    if (response.status === 401) {
+    if (response.status === 401 && allowRetry) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        onTokenRefreshed?.(refreshed);
+        return apiFetch<T>(path, refreshed, options, false);
+      }
       onUnauthorized?.();
     }
+
+    const body = await response.json().catch(() => ({ detail: response.statusText }));
     throw new ApiError(response.status, body.detail ?? "Request failed");
   }
 
