@@ -1,28 +1,17 @@
-import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 
 export function AuthCallbackPage() {
-  const { setToken } = useAuth();
-  const navigate = useNavigate();
-  const hasProcessed = useRef(false);
+  // Google's callback set the refresh cookie server-side and AuthProvider's
+  // bootstrap exchanges it for an access token, so this page only has to wait
+  // for that to resolve. There is no longer a token in the URL to parse, and
+  // therefore no effect, no ref guard, and no manual navigation.
+  const { status } = useAuth();
 
-  useEffect(() => {
-    // Guards against StrictMode's dev-only double-invoke on mount; safe because
-    // this route is only ever reached via a fresh page load (the OAuth
-    // redirect), never a client-side route change onto an already-mounted instance.
-    if (hasProcessed.current) return;
-    hasProcessed.current = true;
+  if (status === "loading") {
+    return <p className="p-6 font-mono text-sm text-ink-muted">Entrando...</p>;
+  }
 
-    const match = window.location.hash.match(/token=([^&]+)/);
-    if (match) {
-      setToken(decodeURIComponent(match[1]));
-      navigate("/", { replace: true });
-    } else {
-      navigate("/login", { replace: true });
-    }
-  }, [setToken, navigate]);
-
-  return <p>Entrando...</p>;
+  return <Navigate to={status === "authenticated" ? "/" : "/login"} replace />;
 }
