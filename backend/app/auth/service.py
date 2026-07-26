@@ -1,7 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.passwords import hash_password
+from app.auth.passwords import hash_password, verify_password
 from app.db.models import User
 
 
@@ -34,4 +34,20 @@ def register_user(db: Session, name: str, email: str, password: str) -> User:
         db.rollback()
         raise EmailAlreadyRegistered()
     db.refresh(user)
+    return user
+
+
+def authenticate(db: Session, email: str, password: str) -> User | None:
+    user = db.query(User).filter(User.email == email.strip().lower()).first()
+
+    # verify_password handles a None hash (Google-only account) and a missing
+    # user by burning equivalent time, so latency does not reveal which case
+    # this was.
+    if user is None:
+        verify_password(password, None)
+        return None
+
+    if not verify_password(password, user.password_hash):
+        return None
+
     return user
