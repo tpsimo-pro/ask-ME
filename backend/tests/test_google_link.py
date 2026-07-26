@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from app.auth.google_oauth import UnverifiedGoogleEmail
 from app.auth.passwords import hash_password
 from app.db.models import User
 
@@ -77,3 +78,18 @@ def test_google_email_is_normalized_for_matching(client, db_session):
     )
 
     assert db_session.query(User).count() == 1
+
+
+def test_google_callback_rejects_unverified_email(client, db_session):
+    client.cookies.set("oauth_state", "matching-state")
+    with patch(
+        "app.auth.router_google.exchange_code_for_userinfo",
+        side_effect=UnverifiedGoogleEmail("someone@example.com"),
+    ):
+        response = client.get(
+            "/auth/google/callback?code=fake-code&state=matching-state",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 400
+    assert db_session.query(User).count() == 0

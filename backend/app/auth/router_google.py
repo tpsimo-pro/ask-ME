@@ -6,7 +6,11 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.auth import refresh_tokens, service
-from app.auth.google_oauth import build_google_login_url, exchange_code_for_userinfo
+from app.auth.google_oauth import (
+    UnverifiedGoogleEmail,
+    build_google_login_url,
+    exchange_code_for_userinfo,
+)
 from app.core.config import settings
 from app.db.session import get_db
 
@@ -35,7 +39,15 @@ def callback(code: str, state: str, request: Request, db: Session = Depends(get_
     if not cookie_state or not hmac.compare_digest(cookie_state, state):
         raise HTTPException(status_code=400, detail="Invalid or missing OAuth state")
 
-    user = service.link_or_create_google_user(db, exchange_code_for_userinfo(code))
+    try:
+        userinfo = exchange_code_for_userinfo(code)
+    except UnverifiedGoogleEmail:
+        raise HTTPException(
+            status_code=400,
+            detail="Sua conta Google não possui um e-mail verificado. Use outro método de login.",
+        )
+
+    user = service.link_or_create_google_user(db, userinfo)
 
     # The access token is no longer handed to the browser in the URL fragment:
     # URLs leak into history, Referer headers, and logs. The frontend calls
