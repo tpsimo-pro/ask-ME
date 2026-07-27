@@ -1,46 +1,101 @@
-import { Logo } from "../components/Logo";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+
+import { login } from "../api/auth";
+import { ApiError } from "../api/client";
+import { AuthLayout } from "../components/AuthLayout";
+import { FormError } from "../components/FormError";
+import { SubmitButton } from "../components/SubmitButton";
+import { TextField } from "../components/TextField";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export function LoginPage() {
+  const { setToken } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      const { access_token } = await login(email, password);
+      setToken(access_token);
+      navigate("/", { replace: true });
+    } catch (caught) {
+      setError(
+        caught instanceof ApiError ? caught.message : "Não foi possível entrar. Tente novamente."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-paper px-4">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:linear-gradient(var(--color-line)_1px,transparent_1px),linear-gradient(90deg,var(--color-line)_1px,transparent_1px)] [background-size:36px_36px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_40%,black,transparent)]"
-      />
+    <AuthLayout
+      title="Entrar"
+      subtitle="Cole o código. Receba o diagnóstico."
+      footer={<>Motor de análise: Groq · Llama 3.3 70B</>}
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <TextField
+          id="email"
+          label="E-mail"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          autoComplete="email"
+        />
+        <TextField
+          id="password"
+          label="Senha"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+        />
 
-      <div className="relative flex flex-col items-center gap-8 text-center">
-        <Logo className="scale-125" />
+        {error && <FormError message={error} />}
 
-        <div className="max-w-sm">
-          <p className="font-mono text-sm uppercase tracking-[0.2em] text-signal">
-            Revisão de código assistida por IA
-          </p>
-          <h1 className="mt-3 font-display text-3xl font-semibold text-ink sm:text-4xl">
-            Cole o código.
-            <br />
-            Receba o diagnóstico.
-          </h1>
-          <p className="mt-4 text-base leading-relaxed text-ink-muted">
-            Sugestões de melhoria, testes gerados e riscos de segurança — em segundos, com
-            histórico salvo na sua conta.
-          </p>
-        </div>
+        <SubmitButton submitting={submitting} submittingLabel="Entrando...">
+          Entrar
+        </SubmitButton>
 
-        <a href={`${API_BASE_URL}/auth/google/login`} className="group">
-          <button
-            type="button"
-            className="rounded-[3px] border border-ink bg-ink px-6 py-3 font-sans text-base font-medium text-paper transition-colors group-hover:bg-paper group-hover:text-ink"
-          >
-            Entrar com Google
-          </button>
-        </a>
+        <Link
+          to="/forgot-password"
+          className="text-center font-mono text-xs uppercase tracking-wider text-ink-muted transition-colors hover:text-ink"
+        >
+          Esqueci minha senha
+        </Link>
+      </form>
 
-        <p className="font-mono text-xs uppercase tracking-wide text-ink-muted/70">
-          Motor de análise: Groq · Llama 3.3 70B
-        </p>
+      <div className="my-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-line" />
+        <span className="font-mono text-xs uppercase tracking-wider text-ink-muted">ou</span>
+        <span className="h-px flex-1 bg-line" />
       </div>
-    </div>
+
+      <a href={`${API_BASE_URL}/auth/google/login`} className="group block">
+        <button
+          type="button"
+          className="w-full cursor-pointer rounded-[3px] border border-ink bg-paper px-6 py-3 font-sans text-base font-medium text-ink transition-colors group-hover:bg-ink group-hover:text-paper"
+        >
+          Entrar com Google
+        </button>
+      </a>
+
+      <p className="mt-6 text-center font-mono text-xs uppercase tracking-wider text-ink-muted">
+        Não tem conta?{" "}
+        <Link to="/register" className="text-signal transition-colors hover:text-ink">
+          Criar conta
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }

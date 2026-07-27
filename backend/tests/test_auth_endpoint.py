@@ -19,7 +19,7 @@ def test_login_redirects_to_google(client):
     assert "oauth_state" in response.cookies
 
 
-def test_callback_creates_user_and_redirects_with_token(client, db_session):
+def test_callback_creates_user_and_sets_refresh_cookie(client, db_session):
     fake_userinfo = {
         "google_sub": "new-google-sub",
         "email": "new@example.com",
@@ -28,15 +28,15 @@ def test_callback_creates_user_and_redirects_with_token(client, db_session):
     }
 
     client.cookies.set("oauth_state", "matching-state")
-    with patch("app.auth.router.exchange_code_for_userinfo", return_value=fake_userinfo):
+    with patch("app.auth.router_google.exchange_code_for_userinfo", return_value=fake_userinfo):
         response = client.get(
             "/auth/google/callback?code=fake-code&state=matching-state",
             follow_redirects=False,
         )
 
     assert response.status_code in (302, 307)
-    location = response.headers["location"]
-    assert location.startswith("http://localhost:5173/auth/callback#token=")
+    assert response.headers["location"] == "http://localhost:5173/auth/callback"
+    assert "refresh_token" in response.cookies
 
     from app.db.models import User
 
@@ -47,7 +47,7 @@ def test_callback_creates_user_and_redirects_with_token(client, db_session):
 
 def test_callback_rejects_mismatched_state(client, db_session):
     client.cookies.set("oauth_state", "expected-state")
-    with patch("app.auth.router.exchange_code_for_userinfo") as mock_exchange:
+    with patch("app.auth.router_google.exchange_code_for_userinfo") as mock_exchange:
         response = client.get(
             "/auth/google/callback?code=fake-code&state=wrong-state",
             follow_redirects=False,
@@ -62,7 +62,7 @@ def test_callback_rejects_mismatched_state(client, db_session):
 
 
 def test_callback_rejects_missing_state_cookie(client, db_session):
-    with patch("app.auth.router.exchange_code_for_userinfo") as mock_exchange:
+    with patch("app.auth.router_google.exchange_code_for_userinfo") as mock_exchange:
         response = client.get(
             "/auth/google/callback?code=fake-code&state=some-state",
             follow_redirects=False,

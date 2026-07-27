@@ -10,9 +10,14 @@ próprio histórico de análises.
 - **Análise de código via IA**: endpoint que envia o código para a Groq API e retorna
   sugestões de melhoria, testes sugeridos e riscos de segurança em formato estruturado,
   com retry automático caso o modelo não devolva um JSON válido no primeiro pedido.
-- **Autenticação via Google OAuth**: login com conta Google (fluxo authorization-code
-  com proteção CSRF via `state`), sessão mantida com JWT próprio (HS256), token guardado
-  apenas em memória no frontend (nunca em `localStorage`/`sessionStorage`).
+- **Autenticação via Google OAuth ou e-mail/senha**: login com conta Google (fluxo
+  authorization-code com proteção CSRF via `state`) ou com e-mail e senha própria
+  (cadastro, login, "esqueci minha senha"). Sessão mantida com um access token JWT
+  (HS256) de vida curta guardado em memória no frontend (nunca em
+  `localStorage`/`sessionStorage`) e um refresh token de vida mais longa em cookie
+  `HttpOnly`/`SameSite=Lax`, com rotação a cada uso — permite recuperar a sessão após um
+  reload da página sem expor o token a XSS. Logout, troca ou redefinição de senha
+  revogam o refresh token no servidor.
 - **Histórico por usuário**: toda análise realizada é persistida no PostgreSQL e associada
   ao usuário autenticado, consultável na página de histórico.
 - **Rate limiting por usuário**: limite de requisições por usuário autenticado para
@@ -45,7 +50,18 @@ próprio histórico de análises.
    - `JWT_SECRET` — qualquer valor aleatório e secreto (ex.: `openssl rand -hex 32`)
 
    Os demais valores (`DATABASE_URL`, `FRONTEND_URL`, `POSTGRES_*`, `VITE_API_BASE_URL`)
-   já vêm prontos para uso local e não precisam ser alterados.
+   já vêm prontos para uso local e não precisam ser alterados. Variáveis relacionadas à
+   autenticação por e-mail/senha, todas com um default local razoável:
+   - `JWT_EXPIRE_MINUTES` (default `15`) — vida do access token; curta de propósito, já
+     que a sessão é recuperada via refresh token, não estendendo o access token.
+   - `REFRESH_TOKEN_EXPIRE_DAYS` (default `30`) — por quanto tempo o cookie de refresh
+     mantém a sessão sem novo login.
+   - `RESET_TOKEN_EXPIRE_MINUTES` (default `60`) — validade do link de "esqueci minha
+     senha" antes de expirar.
+   - `COOKIE_SECURE` (default `false` localmente) — controla a flag `Secure` do cookie
+     de refresh; **deve ser `true` em produção** (exige HTTPS).
+   - `EMAIL_FROM` (default `no-reply@ask-me.local`) — remetente usado nos e-mails de
+     redefinição de senha.
 
 3. Suba a stack:
 
@@ -53,15 +69,31 @@ próprio histórico de análises.
    docker compose up --build
    ```
 
-4. Acesse `http://localhost:5173`, clique em "Entrar com Google" e faça login com uma
-   conta autorizada no consentimento OAuth (necessário se o app estiver em modo de
-   teste no Google Cloud Console).
+4. Acesse `http://localhost:5173` e crie uma conta com e-mail/senha em `/register`, ou
+   clique em "Entrar com Google" e faça login com uma conta autorizada no consentimento
+   OAuth (necessário se o app estiver em modo de teste no Google Cloud Console).
+
+Em desenvolvimento não há provedor de e-mail real: o link de redefinição de senha
+("esqueci minha senha") é apenas escrito no log do backend, não enviado de fato.
+Encontre-o com `docker compose logs backend` (procure pelo bloco `--- EMAIL ---`) e
+abra a URL manualmente no navegador.
 
 Serviços expostos: frontend em `:5173`, backend em `:8000`, Postgres apenas interno
 à rede do Compose.
 
 Para parar: `Ctrl+C` e depois `docker compose down` (adicione `-v` para também apagar
 os dados do Postgres).
+
+### Restrição de deploy para o cookie de refresh
+
+O refresh token é entregue em um cookie `HttpOnly`/`SameSite=Lax`. Isso só funciona
+sem fricção quando API e frontend compartilham um domínio registrável (ex.:
+`app.exemplo.com` e `api.exemplo.com`), pois `SameSite=Lax` cobre subdomínios do mesmo
+domínio. Se API e frontend forem servidos em domínios totalmente distintos, o cookie
+precisará de `SameSite=None` (e, por consequência, proteção CSRF adicional, já que
+`SameSite=None` remove a defesa que `Lax` dava de graça). Em qualquer deploy de
+produção, `COOKIE_SECURE=true` é obrigatório — sem isso o navegador não envia o cookie
+sobre HTTPS de forma confiável.
 
 ## ADR (Architecture Decision Records)
 

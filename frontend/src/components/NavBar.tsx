@@ -7,11 +7,11 @@ import { Logo } from "./Logo";
 
 const LINKS = [
   { to: "/", label: "Analisar" },
-  { to: "/historico", label: "Histórico" },
+  { to: "/history", label: "Histórico" },
 ];
 
 export function NavBar() {
-  const { setToken } = useAuth();
+  const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { pathname } = useLocation();
   const isDark = theme === "dark";
@@ -67,7 +67,7 @@ export function NavBar() {
           </button>
           <button
             type="button"
-            onClick={() => setToken(null)}
+            onClick={() => void signOut()}
             className="font-mono cursor-pointer text-sm uppercase tracking-wider text-ink-muted transition-colors hover:text-red-500"
           >
             Sair

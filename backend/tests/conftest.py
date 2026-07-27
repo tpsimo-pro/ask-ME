@@ -29,9 +29,15 @@ except ModuleNotFoundError:
     create_access_token = None
 
 try:
-    from app.core.rate_limit import analyze_rate_limiter
+    from app.core.rate_limit import AUTH_RATE_LIMITERS, analyze_rate_limiter
 except ModuleNotFoundError:
+    AUTH_RATE_LIMITERS = ()
     analyze_rate_limiter = None
+
+try:
+    from app.auth.email_sender import get_email_sender
+except ModuleNotFoundError:
+    get_email_sender = None
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -55,14 +61,26 @@ def db_session():
 
 
 @pytest.fixture()
-def client(db_session):
+def recorded_emails():
+    return []
+
+
+@pytest.fixture()
+def client(db_session, recorded_emails):
     if app is None:
         pytest.skip("app.main not implemented yet")
 
     def override_get_db():
         yield db_session
 
+    class RecordingEmailSender:
+        def send(self, to: str, subject: str, body: str) -> None:
+            recorded_emails.append({"to": to, "subject": subject, "body": body})
+
     app.dependency_overrides[get_db] = override_get_db
+    if get_email_sender is not None:
+        app.dependency_overrides[get_email_sender] = lambda: RecordingEmailSender()
+
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
@@ -87,6 +105,10 @@ def auth_headers(test_user):
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
+    # Without this, the 5-attempt login limit carries across tests and later
+    # cases fail with 429 for reasons unrelated to what they assert.
     if analyze_rate_limiter is not None:
         analyze_rate_limiter._hits.clear()
+    for limiter in AUTH_RATE_LIMITERS:
+        limiter._hits.clear()
     yield

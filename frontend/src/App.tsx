@@ -8,6 +8,9 @@ import { AnalyzePage } from "./pages/AnalyzePage";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { LoginPage } from "./pages/LoginPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 export function App() {
   return (
@@ -16,6 +19,9 @@ export function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route
               path="/"
@@ -27,7 +33,7 @@ export function App() {
               }
             />
             <Route
-              path="/historico"
+              path="/history"
               element={
                 <AuthGuard>
                   <NavBar />
