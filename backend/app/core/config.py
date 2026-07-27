@@ -1,4 +1,7 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_PLACEHOLDER_SECRETS = {"change-me", "secret", "changeme", "password", ""}
 
 
 class Settings(BaseSettings):
@@ -23,6 +26,16 @@ class Settings(BaseSettings):
     google_redirect_uri: str
     database_url: str
     frontend_url: str
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def jwt_secret_must_be_strong(cls, value: str) -> str:
+        stripped = value.strip()
+        if any(stripped.lower().startswith(bad) for bad in _PLACEHOLDER_SECRETS if bad):
+            raise ValueError("jwt_secret looks like a placeholder value, not a real secret")
+        if len(stripped) < 32:
+            raise ValueError("jwt_secret must be at least 32 characters long")
+        return value
 
 
 settings = Settings()
