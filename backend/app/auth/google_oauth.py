@@ -29,7 +29,7 @@ def build_google_login_url(state: str) -> str:
 
 
 def exchange_code_for_userinfo(code: str) -> dict:
-    with httpx.Client() as client:
+    with httpx.Client(timeout=10.0) as client:
         response = client.post(
             GOOGLE_TOKEN_URL,
             data={
