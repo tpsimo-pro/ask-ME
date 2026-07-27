@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     @classmethod
     def jwt_secret_must_be_strong(cls, value: str) -> str:
         stripped = value.strip()
+        # The `if bad` guard excludes empty string from startswith check to avoid false-positive on every secret
         if any(stripped.lower().startswith(bad) for bad in _PLACEHOLDER_SECRETS if bad):
             raise ValueError("jwt_secret looks like a placeholder value, not a real secret")
         if len(stripped) < 32:
