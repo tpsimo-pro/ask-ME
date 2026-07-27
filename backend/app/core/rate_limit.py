@@ -5,6 +5,7 @@ from collections import defaultdict
 from fastapi import Depends, HTTPException, Request, status
 
 from app.auth.dependencies import get_current_user
+from app.core.config import settings
 from app.db.models import User
 
 TOO_MANY_ATTEMPTS = "Muitas tentativas, tente novamente em alguns minutos"
@@ -55,17 +56,31 @@ def enforce_analyze_rate_limit(current_user: User = Depends(get_current_user)) -
     return current_user
 
 
-def _client_ip(request: Request) -> str:
+def client_ip(request: Request) -> str:
+    if settings.trust_proxy_headers:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            # First entry is the original client per the de-facto X-Forwarded-For
+            # convention; only trust this when a proxy we control sets the header.
+            return forwarded.split(",")[0].strip()
+
     return request.client.host if request.client else "unknown"
 
 
-def enforce_login_rate_limit(request: Request) -> None:
-    login_rate_limiter.check(_client_ip(request))
+def login_key(request: Request, email: str) -> str:
+    # Composite key: an attacker flooding one account no longer exhausts the
+    # shared quota for every other user behind the same IP (NAT, corporate
+    # proxy), while still rate-limiting a single IP hammering many emails.
+    return f"{client_ip(request)}:{email.strip().lower()}"
+
+
+def enforce_login_rate_limit(request: Request, email: str) -> None:
+    login_rate_limiter.check(login_key(request, email))
 
 
 def enforce_register_rate_limit(request: Request) -> None:
-    register_rate_limiter.check(_client_ip(request))
+    register_rate_limiter.check(client_ip(request))
 
 
 def enforce_forgot_password_rate_limit(request: Request) -> None:
-    forgot_password_rate_limiter.check(_client_ip(request))
+    forgot_password_rate_limiter.check(client_ip(request))

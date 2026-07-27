@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     email_from: str = "no-reply@ask-me.local"
     environment: str = "development"
+    trust_proxy_headers: bool = False
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
