@@ -29,6 +29,7 @@ def login():
         max_age=600,
         httponly=True,
         samesite="lax",
+        secure=settings.cookie_secure,
     )
     return response
 

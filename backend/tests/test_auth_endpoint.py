@@ -70,3 +70,15 @@ def test_callback_rejects_missing_state_cookie(client, db_session):
 
     assert response.status_code == 400
     mock_exchange.assert_not_called()
+
+
+def test_oauth_state_cookie_respects_cookie_secure_setting(client, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "cookie_secure", True)
+
+    response = client.get("/auth/google/login", follow_redirects=False)
+
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "oauth_state=" in set_cookie_header
+    assert "secure" in set_cookie_header.lower()
