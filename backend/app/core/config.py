@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     reset_token_expire_minutes: int = 60
     cookie_secure: bool = False
     email_from: str = "no-reply@ask-me.local"
+    environment: str = "development"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
     google_client_id: str
     google_client_secret: str
     google_redirect_uri: str
