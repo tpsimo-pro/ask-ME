@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.auth import refresh_tokens, service
@@ -46,10 +46,12 @@ def register(
 @router.post("/login", response_model=TokenResponse)
 def login(
     payload: LoginRequest,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db),
-    _: None = Depends(enforce_login_rate_limit),
 ) -> TokenResponse:
+    enforce_login_rate_limit(request, str(payload.email))
+
     user = service.authenticate(db, str(payload.email), payload.password)
     if user is None:
         raise HTTPException(

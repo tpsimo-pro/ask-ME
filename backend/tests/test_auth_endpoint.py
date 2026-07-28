@@ -1,7 +1,7 @@
 import os
 
 os.environ.setdefault("GROQ_API_KEY", "test-groq-key")
-os.environ.setdefault("JWT_SECRET", "test-secret")
+os.environ.setdefault("JWT_SECRET", "test-secret-used-only-in-pytest-32chars")
 os.environ.setdefault("GOOGLE_CLIENT_ID", "test-client-id")
 os.environ.setdefault("GOOGLE_CLIENT_SECRET", "test-client-secret")
 os.environ.setdefault("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
@@ -70,3 +70,15 @@ def test_callback_rejects_missing_state_cookie(client, db_session):
 
     assert response.status_code == 400
     mock_exchange.assert_not_called()
+
+
+def test_oauth_state_cookie_respects_cookie_secure_setting(client, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "cookie_secure", True)
+
+    response = client.get("/auth/google/login", follow_redirects=False)
+
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "oauth_state=" in set_cookie_header
+    assert "secure" in set_cookie_header.lower()

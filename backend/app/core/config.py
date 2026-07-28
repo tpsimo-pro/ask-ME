@@ -1,4 +1,7 @@
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_PLACEHOLDER_SECRETS = {"change-me", "secret", "changeme", "password", ""}
 
 
 class Settings(BaseSettings):
@@ -12,11 +15,35 @@ class Settings(BaseSettings):
     reset_token_expire_minutes: int = 60
     cookie_secure: bool = False
     email_from: str = "no-reply@ask-me.local"
+    environment: str = "development"
+    trust_proxy_headers: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
     google_client_id: str
     google_client_secret: str
     google_redirect_uri: str
     database_url: str
     frontend_url: str
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def jwt_secret_must_be_strong(cls, value: str) -> str:
+        stripped = value.strip()
+        # The `if bad` guard excludes empty string from startswith check to avoid false-positive on every secret
+        if any(stripped.lower().startswith(bad) for bad in _PLACEHOLDER_SECRETS if bad):
+            raise ValueError("jwt_secret looks like a placeholder value, not a real secret")
+        if len(stripped) < 32:
+            raise ValueError("jwt_secret must be at least 32 characters long")
+        return value
+
+    @model_validator(mode="after")
+    def smtp_host_required_outside_development(self) -> "Settings":
+        if self.environment != "development" and not self.smtp_host:
+            raise ValueError("smtp_host is required when environment is not 'development'")
+        return self
 
 
 settings = Settings()
