@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _PLACEHOLDER_SECRETS = {"change-me", "secret", "changeme", "password", ""}
@@ -38,6 +38,12 @@ class Settings(BaseSettings):
         if len(stripped) < 32:
             raise ValueError("jwt_secret must be at least 32 characters long")
         return value
+
+    @model_validator(mode="after")
+    def smtp_host_required_outside_development(self) -> "Settings":
+        if self.environment != "development" and not self.smtp_host:
+            raise ValueError("smtp_host is required when environment is not 'development'")
+        return self
 
 
 settings = Settings()
