@@ -15,7 +15,9 @@ Este documento registra decisões de risco residual tomadas conscientemente, par
 
 ### Por que não foi corrigido agora
 
-Não há correção disponível na linha 0.41.x do starlette — a correção exige subir para 0.47.2+ ou 1.x, o que por sua vez provavelmente exige uma atualização do FastAPI em si (a versão do starlette é fixada por compatibilidade). Isso é uma mudança de escopo e risco muito maior do que os apontamentos deste plano de correções de segurança — toca toda a camada de API (routers, middlewares, serialização) e merece sua própria avaliação e plano de testes.
+Não há correção disponível na linha 0.41.x do starlette — a correção exige subir para 0.47.2+ ou 1.x. Confirmado: `fastapi==0.140.7` está disponível, audita limpo com `pip-audit` (zero achados) e resolveria as 7 CVEs listadas acima. A opção existe e foi avaliada, não é hipotética.
+
+A decisão foi adiar esse upgrade mesmo assim: é um salto de ~25 versões menores do FastAPI, não testado contra as rotas, middlewares e serialização desta aplicação — o risco de quebra silenciosa é maior do que o risco das CVEs em aberto (nenhuma delas foi avaliada como diretamente explorável nas rotas expostas por este app; ver "Quando revisitar" abaixo). Isso é uma escolha de proporcionalidade de esforço/risco feita conscientemente em 2026-07-27, não uma limitação técnica.
 
 ### Mitigação atual
 
@@ -23,9 +25,7 @@ O CI (`pip-audit` em `.github/workflows/tests.yml`) ignora explicitamente essas 
 
 ### Quando revisitar
 
-Na próxima vez que o FastAPI for atualizado por qualquer outro motivo, revisar se o starlette resultante resolve essas CVEs e remover as flags `--ignore-vuln` correspondentes. 
-
-Também revisitar se alguma dessas CVEs for reclassificada como explorável no contexto específico desta aplicação (hoje nenhuma delas foi avaliada como diretamente explorável nas rotas expostas por este app — essa avaliação caso a caso não foi feita, é uma aceitação de risco por proporcionalidade de esforço, não uma análise de exploitabilidade).
+No prazo de até um trimestre a partir de 2026-07-27 (ou antes, se qualquer uma destas CVEs for reclassificada como explorável nas rotas deste app), planejar e testar o upgrade para `fastapi==0.140.x` (ou a versão estável mais recente na época) em um branch dedicado, com a suíte completa de testes e uma passada manual pelas rotas mais sensíveis (auth, análise). Se o upgrade passar limpo, remover as flags `--ignore-vuln` correspondentes. Também revisitar antes desse prazo caso o FastAPI seja atualizado por qualquer outro motivo — nesse caso, checar se o starlette resultante já resolve essas CVEs de graça.
 
 ## Rotação de `JWT_SECRET` sem múltiplas chaves
 
