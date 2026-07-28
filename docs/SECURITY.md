@@ -26,3 +26,17 @@ O CI (`pip-audit` em `.github/workflows/tests.yml`) ignora explicitamente essas 
 Na próxima vez que o FastAPI for atualizado por qualquer outro motivo, revisar se o starlette resultante resolve essas CVEs e remover as flags `--ignore-vuln` correspondentes. 
 
 Também revisitar se alguma dessas CVEs for reclassificada como explorável no contexto específico desta aplicação (hoje nenhuma delas foi avaliada como diretamente explorável nas rotas expostas por este app — essa avaliação caso a caso não foi feita, é uma aceitação de risco por proporcionalidade de esforço, não uma análise de exploitabilidade).
+
+## Rotação de `JWT_SECRET` sem múltiplas chaves
+
+`backend/app/auth/jwt.py` assina e verifica tokens com um único segredo (`settings.jwt_secret`, HS256). Não há suporte a `kid`/lista de chaves válidas para rotação gradual.
+
+### Impacto de rotacionar o segredo hoje
+
+Todo `access_token` em circulação (validade de 15 min) passa a falhar a verificação imediatamente. O cliente trata isso como uma chamada 401 seguida de um `POST /auth/refresh` automático (o refresh token não depende do JWT secret), então o efeito prático para o usuário é uma chamada extra, não logout nem perda de dados.
+
+### Quando revisitar
+
+Se o volume de usuários simultâneos crescer a ponto de um pico de `/auth/refresh` após rotação de segredo virar um problema de carga, ou se houver requisito de rotação sem nenhum downtime perceptível — nesse caso, introduzir uma lista de segredos válidos para verificação (assinando sempre com o mais recente).
+
+Referência: achado #9 de `docs/agent-reports/2026-07-27-security-engineer-app-security-review.md`.
