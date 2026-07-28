@@ -16,10 +16,11 @@ def test_console_sender_masks_token_in_body(caplog):
     assert "token=***redacted***" in logged
 
 
-def test_get_email_sender_returns_console_in_development(monkeypatch):
+def test_get_email_sender_returns_console_in_development_without_smtp_host(monkeypatch):
     from app.core.config import settings
 
     monkeypatch.setattr(settings, "environment", "development")
+    monkeypatch.setattr(settings, "smtp_host", "")
     assert isinstance(get_email_sender(), ConsoleEmailSender)
 
 
@@ -31,7 +32,16 @@ def test_get_email_sender_returns_smtp_in_production(monkeypatch):
     assert isinstance(get_email_sender(), SmtpEmailSender)
 
 
-def test_smtp_sender_requires_smtp_host(monkeypatch):
+def test_get_email_sender_returns_smtp_in_development_when_smtp_host_configured(monkeypatch):
+    """Dev can carry real SMTP creds without flipping `environment` to production."""
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "environment", "development")
+    monkeypatch.setattr(settings, "smtp_host", "smtp.gmail.com")
+    assert isinstance(get_email_sender(), SmtpEmailSender)
+
+
+def test_smtp_sender_requires_smtp_host_outside_development(monkeypatch):
     from app.core.config import settings
 
     monkeypatch.setattr(settings, "environment", "production")
