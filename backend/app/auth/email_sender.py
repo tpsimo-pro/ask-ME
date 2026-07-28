@@ -23,8 +23,7 @@ class EmailSender(Protocol):
 class ConsoleEmailSender:
     """Writes a token-redacted version of the message to the application log.
 
-    Dev and docker-compose default only. `get_email_sender` never returns
-    this outside `settings.environment == "development"`.
+    Fallback for whenever SMTP isn't configured (`settings.smtp_host` blank).
     """
 
     def send(self, to: str, subject: str, body: str) -> None:
@@ -38,7 +37,7 @@ class ConsoleEmailSender:
 
 
 class SmtpEmailSender:
-    """Sends mail via SMTP. Used whenever settings.environment != 'development'."""
+    """Sends mail via SMTP. Used whenever settings.smtp_host is configured."""
 
     def send(self, to: str, subject: str, body: str) -> None:
         message = MIMEText(body)
@@ -55,11 +54,23 @@ class SmtpEmailSender:
 
 
 def get_email_sender() -> EmailSender:
-    if settings.environment == "development":
-        return ConsoleEmailSender()
+    """Use real SMTP whenever it's configured, regardless of environment.
 
-    if not settings.smtp_host:
+    This is decoupled from `settings.environment` on purpose: dev can carry
+    real SMTP credentials in `.env` without flipping `environment` to
+    production (which gates unrelated prod-only behavior, e.g. the boot-time
+    validator below). Outside development, `Settings.smtp_host_required_outside_development`
+    already fails at boot if `smtp_host` is blank, so reaching this function
+    with `environment != "development"` and no `smtp_host` should be
+    unreachable in practice -- the explicit check here is a defense-in-depth
+    safety net against that invariant being bypassed (e.g. settings mutated
+    at runtime).
+    """
+    if settings.smtp_host:
+        return SmtpEmailSender()
+
+    if settings.environment != "development":
         raise RuntimeError(
             "settings.smtp_host is required when settings.environment != 'development'"
         )
-    return SmtpEmailSender()
+    return ConsoleEmailSender()
