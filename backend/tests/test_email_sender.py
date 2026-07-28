@@ -1,4 +1,6 @@
 import logging
+import ssl
+from unittest.mock import MagicMock, patch
 
 from app.auth.email_sender import ConsoleEmailSender, SmtpEmailSender, get_email_sender
 
@@ -40,3 +42,24 @@ def test_smtp_sender_requires_smtp_host(monkeypatch):
         assert False, "expected RuntimeError"
     except RuntimeError as exc:
         assert "smtp_host" in str(exc)
+
+
+def test_smtp_sender_starttls_uses_a_verifying_ssl_context(monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "smtp_host", "smtp.example.com")
+    monkeypatch.setattr(settings, "smtp_port", 587)
+    monkeypatch.setattr(settings, "smtp_use_tls", True)
+    monkeypatch.setattr(settings, "smtp_username", "")
+
+    mock_smtp_instance = MagicMock()
+    mock_smtp_instance.__enter__.return_value = mock_smtp_instance
+
+    with patch("smtplib.SMTP", return_value=mock_smtp_instance) as mock_smtp_cls:
+        SmtpEmailSender().send("user@example.com", "Assunto", "Corpo")
+
+    mock_smtp_cls.assert_called_once_with("smtp.example.com", 587, timeout=10)
+    mock_smtp_instance.starttls.assert_called_once()
+    _, kwargs = mock_smtp_instance.starttls.call_args
+    assert "context" in kwargs
+    assert isinstance(kwargs["context"], ssl.SSLContext)

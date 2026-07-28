@@ -1,6 +1,7 @@
 import logging
 import re
 import smtplib
+import ssl
 from email.mime.text import MIMEText
 from typing import Protocol
 
@@ -47,7 +48,7 @@ class SmtpEmailSender:
 
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as smtp:
             if settings.smtp_use_tls:
-                smtp.starttls()
+                smtp.starttls(context=ssl.create_default_context())
             if settings.smtp_username:
                 smtp.login(settings.smtp_username, settings.smtp_password)
             smtp.send_message(message)
