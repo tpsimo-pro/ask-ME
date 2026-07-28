@@ -97,3 +97,61 @@ def test_composite_key_prevents_one_ip_locking_out_other_emails():
 
     # A different user behind the same IP is unaffected.
     limiter.check(login_key(shared_ip_request, "other-user@example.com"))
+
+
+def test_enforce_login_rate_limit_still_trips_per_ip_across_distinct_emails():
+    # Credential stuffing / password spraying: one IP cycling through many
+    # different emails must still trip a 429 via the per-IP-only limiter,
+    # even though the composite IP+email limiter gives each email its own
+    # fresh bucket.
+    from app.core.rate_limit import (
+        enforce_login_rate_limit,
+        login_ip_rate_limiter,
+        login_rate_limiter,
+    )
+
+    login_ip_rate_limiter._hits.clear()
+    login_rate_limiter._hits.clear()
+
+    request = _FakeRequest("10.0.0.1")
+
+    for i in range(5):
+        enforce_login_rate_limit(request, f"user{i}@example.com")
+
+    with pytest.raises(HTTPException) as exc_info:
+        enforce_login_rate_limit(request, "user5@example.com")
+
+    assert exc_info.value.status_code == 429
+
+
+def test_expired_key_is_actually_popped_from_hits_dict(monkeypatch):
+    import time as time_module
+
+    from app.core.rate_limit import InMemoryRateLimiter as _RateLimiterClass
+
+    limiter = _RateLimiterClass(max_requests=5, window_seconds=60, detail="nope")
+
+    current_time = [1000.0]
+    monkeypatch.setattr(time_module, "time", lambda: current_time[0])
+
+    limiter.check("key")
+    assert "key" in limiter._hits
+
+    # Wrap the internal dict so we can prove `check()` actually calls
+    # dict.pop on the fully-expired key (reclaiming it), rather than merely
+    # leaving a stale empty list sitting in the dict forever.
+    popped_keys = []
+    original_dict = limiter._hits
+
+    class TrackingDict(dict):
+        def pop(self, key, *default):
+            popped_keys.append(key)
+            return dict.pop(self, key, *default)
+
+    limiter._hits = TrackingDict(original_dict)
+
+    current_time[0] += 61  # fully past the 60s window
+    limiter.check("key")
+
+    assert "key" in popped_keys
+    assert len(limiter._hits["key"]) == 1

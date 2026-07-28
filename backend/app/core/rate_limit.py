@@ -22,15 +22,23 @@ class InMemoryRateLimiter:
     def check(self, key: str) -> None:
         now = time.time()
         with self._lock:
-            hits = self._hits[key]
             cutoff = now - self.window_seconds
-            hits[:] = [timestamp for timestamp in hits if timestamp > cutoff]
+            hits = self._hits.get(key, [])
+            hits = [timestamp for timestamp in hits if timestamp > cutoff]
+            if not hits:
+                # A fully-expired key would otherwise sit in the dict forever
+                # as an empty list -- reclaim it so an attacker cycling
+                # through unique keys (e.g. many distinct emails) can't grow
+                # this dict without bound.
+                self._hits.pop(key, None)
             if len(hits) >= self.max_requests:
+                self._hits[key] = hits
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail=self.detail,
                 )
             hits.append(now)
+            self._hits[key] = hits
 
 
 analyze_rate_limiter = InMemoryRateLimiter(
@@ -40,12 +48,18 @@ analyze_rate_limiter = InMemoryRateLimiter(
 )
 
 login_rate_limiter = InMemoryRateLimiter(5, 15 * 60, TOO_MANY_ATTEMPTS)
+# Per-IP-only login limiter: protects against one IP hammering many distinct
+# emails (credential stuffing / password spraying), a shape the composite
+# IP+email limiter above cannot catch because each new email starts a fresh
+# bucket.
+login_ip_rate_limiter = InMemoryRateLimiter(5, 15 * 60, TOO_MANY_ATTEMPTS)
 forgot_password_rate_limiter = InMemoryRateLimiter(5, 15 * 60, TOO_MANY_ATTEMPTS)
 register_rate_limiter = InMemoryRateLimiter(3, 60 * 60, TOO_MANY_ATTEMPTS)
 
 # Every limiter that tests must reset between cases. Add new limiters here.
 AUTH_RATE_LIMITERS = (
     login_rate_limiter,
+    login_ip_rate_limiter,
     forgot_password_rate_limiter,
     register_rate_limiter,
 )
@@ -75,6 +89,10 @@ def login_key(request: Request, email: str) -> str:
 
 
 def enforce_login_rate_limit(request: Request, email: str) -> None:
+    # Check the broader, cheaper IP-only limiter first for a faster reject
+    # path, then the composite IP+email limiter. Both must run on every
+    # attempt -- either one tripping is a 429.
+    login_ip_rate_limiter.check(client_ip(request))
     login_rate_limiter.check(login_key(request, email))
 
 
