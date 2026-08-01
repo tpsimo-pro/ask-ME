@@ -7,6 +7,12 @@ COPY package.json package-lock.json* ./
 RUN npm install
 
 COPY . .
+
+# Vite inlines import.meta.env.* at build time, so VITE_API_BASE_URL must
+# reach this RUN step as a build arg -- Railway service variables only
+# exist at container runtime otherwise, and never touch `docker build`.
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
 # --- runtime stage: serve the static dist/ output ---
