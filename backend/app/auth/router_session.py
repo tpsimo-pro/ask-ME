@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.auth import refresh_tokens
+from app.auth.csrf import require_csrf_header
 from app.auth.jwt import create_access_token
 from app.auth.schemas import TokenResponse
 from app.db.session import get_db
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 INVALID_SESSION = "Sessão inválida ou expirada"
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh", response_model=TokenResponse, dependencies=[Depends(require_csrf_header)])
 def refresh(
     request: Request,
     response: Response,
@@ -35,7 +36,11 @@ def refresh(
     return TokenResponse(access_token=create_access_token(user_id))
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_csrf_header)],
+)
 def logout(request: Request, db: Session = Depends(get_db)) -> Response:
     raw_token = request.cookies.get(refresh_tokens.REFRESH_COOKIE)
     if raw_token is not None:
