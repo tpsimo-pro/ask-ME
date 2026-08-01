@@ -28,7 +28,7 @@ def login():
         state,
         max_age=600,
         httponly=True,
-        samesite="lax",
+        samesite=refresh_tokens.cookie_samesite(),
         secure=settings.cookie_secure,
     )
     return response

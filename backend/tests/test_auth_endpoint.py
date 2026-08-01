@@ -82,3 +82,14 @@ def test_oauth_state_cookie_respects_cookie_secure_setting(client, monkeypatch):
     set_cookie_header = response.headers.get("set-cookie", "")
     assert "oauth_state=" in set_cookie_header
     assert "secure" in set_cookie_header.lower()
+    # Frontend and backend are cross-site in production, so once Secure is on
+    # the state cookie must be SameSite=None or it won't survive the redirect
+    # chain through accounts.google.com back to a different Railway subdomain.
+    assert "samesite=none" in set_cookie_header.lower()
+
+
+def test_oauth_state_cookie_is_lax_when_insecure(client):
+    response = client.get("/auth/google/login", follow_redirects=False)
+
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "samesite=lax" in set_cookie_header.lower()

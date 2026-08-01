@@ -1,5 +1,14 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
+// Frontend and backend are on different origins, so the refresh cookie must
+// be SameSite=None in production and is therefore sent on cross-site
+// requests too -- this header is what proves the request actually came from
+// our frontend (CORS only lets settings.frontend_url attach custom headers
+// to a credentialed request). Must match app.auth.csrf.CSRF_HEADER_NAME /
+// CSRF_HEADER_VALUE on the backend.
+const CSRF_HEADER_NAME = "X-Ask-Me-Csrf";
+const CSRF_HEADER_VALUE = "1";
+
 export class ApiError extends Error {
   status: number;
 
@@ -27,6 +36,8 @@ export function registerTokenRefreshHandler(handler: (token: string) => void): v
   onTokenRefreshed = handler;
 }
 
+export { CSRF_HEADER_NAME, CSRF_HEADER_VALUE };
+
 let refreshPromise: Promise<string | null> | null = null;
 
 // Every caller shares one in-flight request. Without this, parallel 401s each
@@ -37,6 +48,7 @@ export function refreshAccessToken(): Promise<string | null> {
     refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
+      headers: { [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE },
     })
       .then((response) => (response.ok ? response.json() : null))
       .then((body) => (body?.access_token as string | undefined) ?? null)

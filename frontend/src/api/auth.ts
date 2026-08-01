@@ -1,4 +1,4 @@
-import { ApiError } from "./client";
+import { ApiError, CSRF_HEADER_NAME, CSRF_HEADER_VALUE } from "./client";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -9,11 +9,21 @@ interface TokenResponse {
 // Auth endpoints need `credentials: "include"` so the refresh cookie is set
 // and sent, and they must never carry an Authorization header — which is why
 // they do not go through apiFetch.
-async function post<T>(path: string, body: unknown): Promise<T> {
+//
+// extraHeaders carries the CSRF marker header for the endpoints that
+// authenticate purely via the (now cross-site, SameSite=None) refresh
+// cookie -- currently just logout. Endpoints like login/register/
+// forgot-password/reset-password authenticate with a body, not a cookie, so
+// they don't need it.
+async function post<T>(
+  path: string,
+  body: unknown,
+  extraHeaders: Record<string, string> = {}
+): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...extraHeaders },
     body: JSON.stringify(body),
   });
 
@@ -58,5 +68,5 @@ export function resetPassword(token: string, password: string): Promise<void> {
 }
 
 export function logout(): Promise<void> {
-  return post<void>("/auth/logout", {});
+  return post<void>("/auth/logout", {}, { [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE });
 }

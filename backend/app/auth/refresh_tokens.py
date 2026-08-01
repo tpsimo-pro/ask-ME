@@ -12,6 +12,17 @@ REFRESH_COOKIE = "refresh_token"
 COOKIE_PATH = "/auth"
 
 
+def cookie_samesite() -> str:
+    # Frontend and backend live on different Railway subdomains -- different
+    # registrable domains -- so for SameSite purposes this is permanently a
+    # cross-site setup. Browsers require Secure for SameSite=None, and refuse
+    # the cookie outright otherwise, so we can only use None once we're
+    # actually serving over HTTPS (settings.cookie_secure). Local dev over
+    # plain HTTP falls back to Lax, which is fine there because frontend and
+    # backend are same-site enough in that setup for Lax to actually work.
+    return "none" if settings.cookie_secure else "lax"
+
+
 def _hash(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode()).hexdigest()
 
@@ -91,7 +102,7 @@ def set_cookie(response: Response, raw_token: str) -> None:
         raw_token,
         max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
         httponly=True,
-        samesite="lax",
+        samesite=cookie_samesite(),
         secure=settings.cookie_secure,
         path=COOKIE_PATH,
     )
